@@ -149,6 +149,7 @@ Settings.prototype.get = function (key, def) {
 		}
 		return def;
 	}
+	// this is uncovered
 	if (obj === undefined) {
 		return def;
 	}
