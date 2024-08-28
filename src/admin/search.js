@@ -96,18 +96,21 @@ async function buildNamespace(language, namespace) {
 		if (!translations || !Object.keys(translations).length) {
 			return await fallback(namespace);
 		}
-		// join all translations into one string separated by newlines
-		let str = Object.keys(translations).map(key => translations[key]).join('\n');
+		// Join all translations into one string separated by newlines
+		let str = Object.values(translations).join('\n');
 		str = sanitize(str);
 
-		let title = namespace;
-		title = title.match(/admin\/(.+?)\/(.+?)$/);
-		title = `[[admin/menu:section-${
-			title[1] === 'development' ? 'advanced' : title[1]
-		}]]${title[2] ? (` > [[admin/menu:${
-			title[1]}/${title[2]}]]`) : ''}`;
+		// Extract the section and subsection from the namespace
+		let title = namespace.match(/admin\/(.+?)\/(.+?)$/);
 
-		title = await translator.translate(title);
+		if (title) {
+			let section = title[1] === 'development' ? 'advanced' : title[1];
+			let subsection = title[2] ? ` > [[admin/menu:${section}/${title[2]}]]` : '';
+			title = `[[admin/menu:section-${section}]]${subsection}`;
+
+			// Translate the title
+			title = await translator.translate(title);
+		}
 		return {
 			namespace: namespace,
 			translations: `${str}\n${title}`,
