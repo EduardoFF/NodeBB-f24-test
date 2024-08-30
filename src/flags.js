@@ -151,18 +151,10 @@ Flags.getFlagIdsWithFilters = async function ({ filters, uid, query }) {
 	}
 	sets = (sets.length || orSets.length) ? sets : ['flags:datetime']; // No filter default
 
-	let flagIds = [];
-	if (sets.length === 1) {
-		flagIds = await db.getSortedSetRevRange(sets[0], 0, -1);
-	} else if (sets.length > 1) {
-		flagIds = await db.getSortedSetRevIntersect({ sets: sets, start: 0, stop: -1, aggregate: 'MAX' });
-	}
+	let flagIds = await getFlagIdsFromSets(sets);
 
 	if (orSets.length) {
-		let _flagIds = await Promise.all(orSets.map(async orSet => await db.getSortedSetRevUnion({ sets: orSet, start: 0, stop: -1, aggregate: 'MAX' })));
-
-		// Each individual orSet is ANDed together to construct the final list of flagIds
-		_flagIds = _.intersection(..._flagIds);
+		const _flagIds = await getFlagIdsFromOrSets(orSets);
 
 		// Merge with flagIds returned by sets
 		if (sets.length) {
@@ -182,6 +174,21 @@ Flags.getFlagIdsWithFilters = async function ({ filters, uid, query }) {
 	});
 	return result.flagIds;
 };
+
+async function getFlagIdsFromSets(sets) {
+	if (sets.length === 1) {
+		return await db.getSortedSetRevRange(sets[0], 0, -1);
+	} else if (sets.length > 1) {
+		return await db.getSortedSetRevIntersect({ sets: sets, start: 0, stop: -1, aggregate: 'MAX' });
+	}
+	return [];
+}
+
+async function getFlagIdsFromOrSets(orSets) {
+	const _flagIds = await Promise.all(orSets.map(async orSet => await db.getSortedSetRevUnion({ sets: orSet, start: 0, stop: -1, aggregate: 'MAX' })));
+	return _.intersection(..._flagIds);
+}
+
 
 Flags.list = async function (data) {
 	const filters = data.filters || {};
